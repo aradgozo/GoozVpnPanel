@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>VPN Dashboard</title>
 
     <style>
@@ -21,8 +20,8 @@
 
         header {
             padding: 22px;
-            border-bottom: 1px solid #25252d;
             background: #111118;
+            border-bottom: 1px solid #25252d;
         }
 
         header h1 {
@@ -45,11 +44,6 @@
             border: 1px solid #25252d;
             border-radius: 16px;
             padding: 25px;
-            margin-bottom: 20px;
-        }
-
-        h2 {
-            margin-top: 0;
         }
 
         label {
@@ -71,7 +65,7 @@
         }
 
         textarea {
-            min-height: 140px;
+            min-height: 160px;
             resize: vertical;
         }
 
@@ -91,14 +85,36 @@
             background: #4752c4;
         }
 
-        .success {
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        #result {
             display: none;
             margin-top: 20px;
-            padding: 15px;
-            border-radius: 10px;
+            padding: 18px;
             background: #102c1b;
-            color: #6ff09a;
+            border-radius: 10px;
+            color: #70f09a;
+        }
+
+        #error {
+            display: none;
+            margin-top: 20px;
+            padding: 18px;
+            background: #351414;
+            border-radius: 10px;
+            color: #ff7777;
+        }
+
+        .url {
+            margin-top: 10px;
+            padding: 12px;
+            background: #09090d;
+            border-radius: 8px;
             word-break: break-all;
+            color: white;
         }
     </style>
 </head>
@@ -107,14 +123,14 @@
 
 <header>
     <h1>VPN Dashboard</h1>
-    <p>Create and manage private VPN information pages.</p>
+    <p>Create private VPN pages.</p>
 </header>
 
 <div class="container">
 
     <div class="card">
 
-        <h2>Create VPN Page</h2>
+        <h2>Create VPN</h2>
 
         <label>VPN Name</label>
         <input
@@ -123,18 +139,24 @@
             placeholder="Germany #1"
         >
 
+        <label>VPN Config</label>
+        <textarea
+            id="config"
+            placeholder="Paste your VLESS or VMess config here..."
+        ></textarea>
+
         <label>VPN Status Page URL</label>
         <input
             id="sourceUrl"
             type="url"
-            placeholder="Paste your private VPN status page URL"
+            placeholder="https://your-vpn-panel.example/..."
         >
 
         <label>Traffic Limit</label>
         <input
             id="limit"
-            type="text"
-            placeholder="100 GB"
+            type="number"
+            placeholder="100"
         >
 
         <label>Expiration Date</label>
@@ -143,11 +165,13 @@
             type="date"
         >
 
-        <button onclick="generatePage()">
+        <button id="generateButton" onclick="generateVPN()">
             Generate Private Page
         </button>
 
-        <div class="success" id="success"></div>
+        <div id="result"></div>
+
+        <div id="error"></div>
 
     </div>
 
@@ -155,45 +179,117 @@
 
 <script>
 
-function generatePage() {
+async function generateVPN() {
 
-    const name = document.getElementById("name").value;
-    const sourceUrl = document.getElementById("sourceUrl").value;
-    const limit = document.getElementById("limit").value;
-    const expiration = document.getElementById("expiration").value;
+    const button =
+        document.getElementById("generateButton");
 
-    if (!name || !sourceUrl) {
-        alert("Please enter the VPN name and status page URL.");
+    const name =
+        document.getElementById("name").value.trim();
+
+    const config =
+        document.getElementById("config").value.trim();
+
+    const sourceUrl =
+        document.getElementById("sourceUrl").value.trim();
+
+    const trafficLimit =
+        document.getElementById("limit").value;
+
+    const expiration =
+        document.getElementById("expiration").value;
+
+    const result =
+        document.getElementById("result");
+
+    const error =
+        document.getElementById("error");
+
+    result.style.display = "none";
+    error.style.display = "none";
+
+    if (!name || !config || !sourceUrl) {
+
+        error.textContent =
+            "Please fill in the VPN name, config, and status page URL.";
+
+        error.style.display = "block";
+
         return;
     }
 
-    const uuid = crypto.randomUUID();
+    button.disabled = true;
+    button.textContent = "Creating...";
 
-    const publicUrl =
-        "vpn.html?id=" + uuid;
+    try {
 
-    const success =
-        document.getElementById("success");
+        const response = await fetch("/api/create-vpn", {
 
-    success.style.display = "block";
+            method: "POST",
 
-    success.innerHTML =
-        "<strong>Private page generated!</strong><br><br>" +
-        "VPN: " + escapeHTML(name) + "<br>" +
-        "Page ID: " + uuid + "<br><br>" +
-        "Public page:<br>" +
-        "<a href='" + publicUrl + "' target='_blank'>" +
-        publicUrl +
-        "</a>";
-}
+            headers: {
+                "Content-Type": "application/json"
+            },
 
-function escapeHTML(text) {
+            body: JSON.stringify({
+                name: name,
+                config: config,
+                sourceUrl: sourceUrl,
+                trafficLimit: trafficLimit,
+                expiration: expiration
+            })
 
-    const div = document.createElement("div");
+        });
 
-    div.textContent = text;
+        const data = await response.json();
 
-    return div.innerHTML;
+        if (!response.ok || !data.success) {
+            throw new Error(
+                data.error || "Failed to create VPN."
+            );
+        }
+
+        const publicUrl =
+            `${window.location.origin}/vpn.html?id=${data.id}`;
+
+        result.innerHTML = `
+            <strong>VPN created successfully!</strong>
+
+            <br><br>
+
+            Your private page:
+
+            <div class="url">
+                ${publicUrl}
+            </div>
+
+            <br>
+
+            Save this URL and give it to your friend.
+        `;
+
+        result.style.display = "block";
+
+        document.getElementById("name").value = "";
+        document.getElementById("config").value = "";
+        document.getElementById("sourceUrl").value = "";
+        document.getElementById("limit").value = "";
+        document.getElementById("expiration").value = "";
+
+    } catch (err) {
+
+        error.textContent =
+            err.message;
+
+        error.style.display = "block";
+
+    } finally {
+
+        button.disabled = false;
+        button.textContent = "Generate Private Page";
+
+    }
+
 }
 
 </script>

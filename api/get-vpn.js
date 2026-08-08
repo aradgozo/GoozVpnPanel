@@ -4,23 +4,79 @@ function toEnglishNumbers(text) {
         .replace(/[٠-٩]/g, d => "٠١٢٣٤٥٦٧٨٩".indexOf(d));
 }
 
-function parseTraffic(value) {
-    if (!value) return null;
+function decodeHtml(text) {
+    return text
+        .replace(/&nbsp;/gi, " ")
+        .replace(/&amp;/gi, "&")
+        .replace(/&lt;/gi, "<")
+        .replace(/&gt;/gi, ">")
+        .replace(/&quot;/gi, '"')
+        .replace(/&#39;/gi, "'")
+        .replace(/&#x27;/gi, "'");
+}
 
-    const text = toEnglishNumbers(value)
-        .replace(/,/g, "")
-        .trim();
+function htmlToText(html) {
 
-    const match = text.match(
-        /([\d.]+)\s*(B|KB|MB|GB|TB)/i
+    let text = html;
+
+    // Remove scripts and styles.
+    text = text.replace(
+        /<script[\s\S]*?<\/script>/gi,
+        " "
     );
 
-    if (!match) return null;
+    text = text.replace(
+        /<style[\s\S]*?<\/style>/gi,
+        " "
+    );
 
-    const number = parseFloat(match[1]);
-    const unit = match[2].toUpperCase();
+    // Convert common HTML separators to spaces.
+    text = text.replace(
+        /<\/(div|p|section|article|li|tr|td|th|h1|h2|h3|h4|h5|h6)>/gi,
+        " "
+    );
 
-    const multiplier = {
+    // Remove remaining HTML tags.
+    text = text.replace(
+        /<[^>]*>/g,
+        " "
+    );
+
+    text = decodeHtml(text);
+
+    // Normalize whitespace.
+    text = text.replace(/\s+/g, " ");
+
+    return text.trim();
+}
+
+function parseTraffic(value) {
+
+    if (!value) {
+        return null;
+    }
+
+    const text =
+        toEnglishNumbers(value)
+            .replace(/,/g, "")
+            .trim();
+
+    const match =
+        text.match(
+            /([\d.]+)\s*(B|KB|MB|GB|TB)/i
+        );
+
+    if (!match) {
+        return null;
+    }
+
+    const number =
+        parseFloat(match[1]);
+
+    const unit =
+        match[2].toUpperCase();
+
+    const multipliers = {
         B: 1,
         KB: 1024,
         MB: 1024 ** 2,
@@ -28,11 +84,12 @@ function parseTraffic(value) {
         TB: 1024 ** 4
     };
 
-    return number * multiplier[unit];
+    return number * multipliers[unit];
 }
 
 function formatTraffic(bytes) {
-    if (bytes === null || bytes === undefined) {
+
+    if (bytes === null) {
         return "Unknown";
     }
 
@@ -53,17 +110,6 @@ function formatTraffic(bytes) {
     }
 
     return `${(bytes / 1024 ** 4).toFixed(1)} TB`;
-}
-
-function htmlToText(html) {
-    return html
-        .replace(/<script[\s\S]*?<\/script>/gi, " ")
-        .replace(/<style[\s\S]*?<\/style>/gi, " ")
-        .replace(/<[^>]+>/g, " ")
-        .replace(/&nbsp;/gi, " ")
-        .replace(/&amp;/gi, "&")
-        .replace(/\s+/g, " ")
-        .trim();
 }
 
 export default async function handler(request, response) {
@@ -87,24 +133,27 @@ export default async function handler(request, response) {
             process.env.SUPABASE_SECRET_KEY;
 
         /*
-         * Get only the VPN information we need.
+         * Get our private VPN record.
          */
 
-        const databaseResponse = await fetch(
-            `${supabaseUrl}/rest/v1/vpns?select=name,config,source_url&page_id=eq.${encodeURIComponent(id)}`,
-            {
-                headers: {
-                    apikey: supabaseKey,
-                    Authorization: `Bearer ${supabaseKey}`
+        const databaseResponse =
+            await fetch(
+                `${supabaseUrl}/rest/v1/vpns?select=name,config,source_url&page_id=eq.${encodeURIComponent(id)}`,
+                {
+                    headers: {
+                        apikey: supabaseKey,
+                        Authorization:
+                            `Bearer ${supabaseKey}`
+                    }
                 }
-            }
-        );
+            );
 
         if (!databaseResponse.ok) {
 
             return response.status(500).json({
                 success: false,
-                error: await databaseResponse.text()
+                error:
+                    await databaseResponse.text()
             });
         }
 
@@ -122,16 +171,19 @@ export default async function handler(request, response) {
         const vpn = rows[0];
 
         /*
-         * Fetch the X4G status page.
+         * Fetch the ENTIRE X4G page.
          */
 
         const x4gResponse =
-            await fetch(vpn.source_url, {
-                headers: {
-                    "User-Agent":
-                        "Mozilla/5.0"
+            await fetch(
+                vpn.source_url,
+                {
+                    headers: {
+                        "User-Agent":
+                            "Mozilla/5.0"
+                    }
                 }
-            });
+            );
 
         if (!x4gResponse.ok) {
 
@@ -142,40 +194,63 @@ export default async function handler(request, response) {
             });
         }
 
-        const html =
+        const x4gHTML =
             await x4gResponse.text();
 
-        const text =
-            htmlToText(html);
+        /*
+         * Turn the whole page into plain text.
+         */
+
+        const x4gText =
+            htmlToText(x4gHTML);
 
         /*
-         * Find:
+         * Find used traffic.
+         *
+         * Example:
          *
          * 59.3 KB مصرف شده
+         */
+
+        const usedMatch =
+            x4gText.match(
+                /([\d.,]+\s*(?:B|KB|MB|GB|TB))\s*مصرف\s*شده/i
+            );
+
+        /*
+         * Find quota.
          *
-         * and:
+         * Example:
          *
          * سهمیه: ∞
          */
 
-        const usedMatch =
-            text.match(
-                /([\d.,]+\s*(?:B|KB|MB|GB|TB))\s*مصرف\s*شده/i
-            );
-
         const quotaMatch =
-            text.match(
+            x4gText.match(
                 /سهمیه\s*[:：]?\s*(∞|[\d.,]+\s*(?:B|KB|MB|GB|TB))/i
             );
 
         let usedBytes = null;
+
         let quotaBytes = null;
+
         let unlimited = false;
 
+        /*
+         * Parse used traffic.
+         */
+
         if (usedMatch) {
+
             usedBytes =
-                parseTraffic(usedMatch[1]);
+                parseTraffic(
+                    usedMatch[1]
+                );
         }
+
+        /*
+         * Parse quota.
+         */
 
         if (quotaMatch) {
 
@@ -183,12 +258,19 @@ export default async function handler(request, response) {
                 quotaMatch[1].trim();
 
             if (quota === "∞") {
+
                 unlimited = true;
+
             } else {
+
                 quotaBytes =
                     parseTraffic(quota);
             }
         }
+
+        /*
+         * Calculate remaining traffic.
+         */
 
         let remainingBytes = null;
 
@@ -197,6 +279,7 @@ export default async function handler(request, response) {
             usedBytes !== null &&
             quotaBytes !== null
         ) {
+
             remainingBytes =
                 Math.max(
                     0,
@@ -205,10 +288,9 @@ export default async function handler(request, response) {
         }
 
         /*
-         * IMPORTANT:
+         * Return ONLY the useful information.
          *
-         * We do NOT use the old database
-         * expiration field anymore.
+         * We do NOT return the X4G HTML.
          */
 
         return response.status(200).json({
@@ -217,24 +299,25 @@ export default async function handler(request, response) {
 
             vpn: {
 
-                name: vpn.name,
+                name:
+                    vpn.name,
 
-                config: vpn.config,
+                config:
+                    vpn.config,
 
                 traffic: {
 
                     used:
-                        formatTraffic(usedBytes),
-
-                    usedBytes,
+                        formatTraffic(
+                            usedBytes
+                        ),
 
                     limit:
                         unlimited
                             ? "Unlimited"
-                            : formatTraffic(quotaBytes),
-
-                    limitBytes:
-                        quotaBytes,
+                            : formatTraffic(
+                                quotaBytes
+                            ),
 
                     remaining:
                         unlimited
@@ -243,14 +326,13 @@ export default async function handler(request, response) {
                                 remainingBytes
                             ),
 
-                    remainingBytes,
-
-                    unlimited
+                    unlimited:
+                        unlimited
                 },
 
                 /*
-                 * Expiration will be added from X4G
-                 * after we identify its exact format.
+                 * We are deliberately not using
+                 * the old database expiration.
                  */
                 expiration: null
             }
@@ -259,8 +341,13 @@ export default async function handler(request, response) {
     } catch (error) {
 
         return response.status(500).json({
+
             success: false,
-            error: error.message
+
+            error:
+                error.message
+
         });
+
     }
 }

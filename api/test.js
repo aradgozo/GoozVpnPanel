@@ -11,7 +11,7 @@ export default async function handler(request, response) {
         }
 
         const result = await fetch(
-            `${supabaseUrl}/rest/v1/vpns?select=id&limit=1`,
+            `${supabaseUrl.replace(/\/rest\/v1\/?$/, "")}/rest/v1/vpns?select=id&limit=1`,
             {
                 headers: {
                     apikey: supabaseKey,

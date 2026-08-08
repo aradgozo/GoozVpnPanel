@@ -48,7 +48,7 @@ export default async function handler(request, response) {
                 },
 
                 body: JSON.stringify({
-                    id: pageId,
+                    page_id: pageId,
                     name: name,
                     config: config,
                     source_url: sourceUrl,

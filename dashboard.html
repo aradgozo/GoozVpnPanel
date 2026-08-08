@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>VPN Dashboard</title>
 
     <style>
@@ -133,6 +134,7 @@
         <h2>Create VPN</h2>
 
         <label>VPN Name</label>
+
         <input
             id="name"
             type="text"
@@ -140,32 +142,24 @@
         >
 
         <label>VPN Config</label>
+
         <textarea
             id="config"
             placeholder="Paste your VLESS or VMess config here..."
         ></textarea>
 
-        <label>VPN Status Page URL</label>
+        <label>X4G Status Page URL</label>
+
         <input
             id="sourceUrl"
             type="url"
-            placeholder="https://your-vpn-panel.example/..."
+            placeholder="https://your-panel.example/p/..."
         >
 
-        <label>Traffic Limit</label>
-        <input
-            id="limit"
-            type="number"
-            placeholder="100"
+        <button
+            id="generateButton"
+            onclick="generateVPN()"
         >
-
-        <label>Expiration Date</label>
-        <input
-            id="expiration"
-            type="date"
-        >
-
-        <button id="generateButton" onclick="generateVPN()">
             Generate Private Page
         </button>
 
@@ -185,19 +179,16 @@ async function generateVPN() {
         document.getElementById("generateButton");
 
     const name =
-        document.getElementById("name").value.trim();
+        document.getElementById("name")
+            .value.trim();
 
     const config =
-        document.getElementById("config").value.trim();
+        document.getElementById("config")
+            .value.trim();
 
     const sourceUrl =
-        document.getElementById("sourceUrl").value.trim();
-
-    const trafficLimit =
-        document.getElementById("limit").value;
-
-    const expiration =
-        document.getElementById("expiration").value;
+        document.getElementById("sourceUrl")
+            .value.trim();
 
     const result =
         document.getElementById("result");
@@ -211,7 +202,35 @@ async function generateVPN() {
     if (!name || !config || !sourceUrl) {
 
         error.textContent =
-            "Please fill in the VPN name, config, and status page URL.";
+            "Please fill in the VPN name, config, and X4G status page URL.";
+
+        error.style.display = "block";
+
+        return;
+    }
+
+    /*
+     * Only allow X4G public pages.
+     */
+
+    try {
+
+        const url = new URL(sourceUrl);
+
+        if (!url.pathname.startsWith("/p/")) {
+
+            error.textContent =
+                "The X4G URL must be a /p/... status page.";
+
+            error.style.display = "block";
+
+            return;
+        }
+
+    } catch {
+
+        error.textContent =
+            "Please enter a valid X4G status page URL.";
 
         error.style.display = "block";
 
@@ -223,41 +242,51 @@ async function generateVPN() {
 
     try {
 
-        const response = await fetch("/api/create-vpn", {
+        const response =
+            await fetch("/api/create-vpn", {
 
-            method: "POST",
+                method: "POST",
 
-            headers: {
-                "Content-Type": "application/json"
-            },
+                headers: {
+                    "Content-Type": "application/json"
+                },
 
-            body: JSON.stringify({
-                name: name,
-                config: config,
-                sourceUrl: sourceUrl,
-                trafficLimit: trafficLimit,
-                expiration: expiration
-            })
+                body: JSON.stringify({
 
-        });
+                    name: name,
 
-        const data = await response.json();
+                    config: config,
+
+                    sourceUrl: sourceUrl
+
+                })
+
+            });
+
+        const data =
+            await response.json();
 
         if (!response.ok || !data.success) {
+
             throw new Error(
-                data.error || "Failed to create VPN."
+                data.error ||
+                "Failed to create VPN."
             );
+
         }
 
         const publicUrl =
             `${window.location.origin}/vpn.html?id=${data.id}`;
 
         result.innerHTML = `
-            <strong>VPN created successfully!</strong>
+
+            <strong>
+                VPN created successfully!
+            </strong>
 
             <br><br>
 
-            Your private page:
+            Private VPN page:
 
             <div class="url">
                 ${publicUrl}
@@ -265,16 +294,21 @@ async function generateVPN() {
 
             <br>
 
-            Save this URL and give it to your friend.
+            X4G will provide the traffic
+            and expiration information.
+
         `;
 
         result.style.display = "block";
 
-        document.getElementById("name").value = "";
-        document.getElementById("config").value = "";
-        document.getElementById("sourceUrl").value = "";
-        document.getElementById("limit").value = "";
-        document.getElementById("expiration").value = "";
+        document.getElementById("name")
+            .value = "";
+
+        document.getElementById("config")
+            .value = "";
+
+        document.getElementById("sourceUrl")
+            .value = "";
 
     } catch (err) {
 
@@ -286,7 +320,9 @@ async function generateVPN() {
     } finally {
 
         button.disabled = false;
-        button.textContent = "Generate Private Page";
+
+        button.textContent =
+            "Generate Private Page";
 
     }
 

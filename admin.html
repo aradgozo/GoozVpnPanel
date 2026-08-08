@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VPN Admin Panel</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: #0b0b0f;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .panel {
+            width: 90%;
+            max-width: 700px;
+            background: #15151c;
+            padding: 30px;
+            border-radius: 18px;
+            box-shadow: 0 0 40px rgba(0,0,0,0.5);
+        }
+
+        h1 {
+            margin-top: 0;
+        }
+
+        label {
+            display: block;
+            margin-top: 20px;
+            margin-bottom: 8px;
+            color: #aaa;
+        }
+
+        input,
+        textarea {
+            width: 100%;
+            padding: 13px;
+            border: 1px solid #333;
+            border-radius: 10px;
+            background: #0d0d12;
+            color: white;
+            outline: none;
+        }
+
+        textarea {
+            min-height: 150px;
+            resize: vertical;
+        }
+
+        button {
+            width: 100%;
+            margin-top: 25px;
+            padding: 14px;
+            border: 0;
+            border-radius: 10px;
+            background: #5865f2;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #4752c4;
+        }
+
+        #result {
+            margin-top: 25px;
+            padding: 15px;
+            background: #0d0d12;
+            border-radius: 10px;
+            display: none;
+            word-break: break-all;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="panel">
+
+    <h1>VPN Admin Panel</h1>
+    <p>Create and manage your VPN pages.</p>
+
+    <label>VPN Name</label>
+    <input id="vpnName" type="text" placeholder="Germany #1">
+
+    <label>VPN Config</label>
+    <textarea id="vpnConfig" placeholder="Paste your VLESS or VMess config here..."></textarea>
+
+    <label>VPN Status Page URL</label>
+    <input id="statusUrl" type="url" placeholder="https://example.com/...">
+
+    <label>Traffic Limit (GB)</label>
+    <input id="trafficLimit" type="number" placeholder="100">
+
+    <label>Expiration Date</label>
+    <input id="expiration" type="date">
+
+    <button onclick="generateVPN()">Generate VPN Page</button>
+
+    <div id="result"></div>
+
+</div>
+
+<script>
+function generateVPN() {
+
+    const name = document.getElementById("vpnName").value;
+    const config = document.getElementById("vpnConfig").value;
+    const statusUrl = document.getElementById("statusUrl").value;
+    const trafficLimit = document.getElementById("trafficLimit").value;
+    const expiration = document.getElementById("expiration").value;
+
+    if (!name || !config || !statusUrl) {
+        alert("Please fill in the VPN name, config, and status URL.");
+        return;
+    }
+
+    const uuid = crypto.randomUUID();
+
+    const result = document.getElementById("result");
+
+    result.style.display = "block";
+
+    result.innerHTML = `
+        <strong>VPN Created!</strong><br><br>
+        Name: ${escapeHTML(name)}<br>
+        UUID: ${uuid}<br><br>
+        Public page:<br>
+        <a href="vpn.html?id=${uuid}" target="_blank">
+            vpn.html?id=${uuid}
+        </a>
+    `;
+}
+
+function escapeHTML(text) {
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
+}
+</script>
+
+</body>
+</html>

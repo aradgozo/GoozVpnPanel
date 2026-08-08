@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>VPN Dashboard</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: #09090d;
+            color: white;
+        }
+
+        header {
+            padding: 22px;
+            border-bottom: 1px solid #25252d;
+            background: #111118;
+        }
+
+        header h1 {
+            margin: 0;
+        }
+
+        header p {
+            color: #888;
+            margin-bottom: 0;
+        }
+
+        .container {
+            width: 92%;
+            max-width: 900px;
+            margin: 30px auto;
+        }
+
+        .card {
+            background: #15151c;
+            border: 1px solid #25252d;
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            margin-top: 0;
+        }
+
+        label {
+            display: block;
+            margin-top: 18px;
+            margin-bottom: 7px;
+            color: #aaa;
+        }
+
+        input,
+        textarea {
+            width: 100%;
+            padding: 13px;
+            border: 1px solid #333;
+            border-radius: 10px;
+            background: #0d0d12;
+            color: white;
+            outline: none;
+        }
+
+        textarea {
+            min-height: 140px;
+            resize: vertical;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            margin-top: 22px;
+            border: none;
+            border-radius: 10px;
+            background: #5865f2;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #4752c4;
+        }
+
+        .success {
+            display: none;
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            background: #102c1b;
+            color: #6ff09a;
+            word-break: break-all;
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <h1>VPN Dashboard</h1>
+    <p>Create and manage private VPN information pages.</p>
+</header>
+
+<div class="container">
+
+    <div class="card">
+
+        <h2>Create VPN Page</h2>
+
+        <label>VPN Name</label>
+        <input
+            id="name"
+            type="text"
+            placeholder="Germany #1"
+        >
+
+        <label>VPN Status Page URL</label>
+        <input
+            id="sourceUrl"
+            type="url"
+            placeholder="Paste your private VPN status page URL"
+        >
+
+        <label>Traffic Limit</label>
+        <input
+            id="limit"
+            type="text"
+            placeholder="100 GB"
+        >
+
+        <label>Expiration Date</label>
+        <input
+            id="expiration"
+            type="date"
+        >
+
+        <button onclick="generatePage()">
+            Generate Private Page
+        </button>
+
+        <div class="success" id="success"></div>
+
+    </div>
+
+</div>
+
+<script>
+
+function generatePage() {
+
+    const name = document.getElementById("name").value;
+    const sourceUrl = document.getElementById("sourceUrl").value;
+    const limit = document.getElementById("limit").value;
+    const expiration = document.getElementById("expiration").value;
+
+    if (!name || !sourceUrl) {
+        alert("Please enter the VPN name and status page URL.");
+        return;
+    }
+
+    const uuid = crypto.randomUUID();
+
+    const publicUrl =
+        "vpn.html?id=" + uuid;
+
+    const success =
+        document.getElementById("success");
+
+    success.style.display = "block";
+
+    success.innerHTML =
+        "<strong>Private page generated!</strong><br><br>" +
+        "VPN: " + escapeHTML(name) + "<br>" +
+        "Page ID: " + uuid + "<br><br>" +
+        "Public page:<br>" +
+        "<a href='" + publicUrl + "' target='_blank'>" +
+        publicUrl +
+        "</a>";
+}
+
+function escapeHTML(text) {
+
+    const div = document.createElement("div");
+
+    div.textContent = text;
+
+    return div.innerHTML;
+}
+
+</script>
+
+</body>
+</html>

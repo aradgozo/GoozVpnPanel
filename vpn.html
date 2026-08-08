@@ -36,6 +36,7 @@
 
         h1 {
             margin-top: 0;
+            margin-bottom: 10px;
         }
 
         .status {
@@ -98,6 +99,11 @@
             color: #ff7070;
         }
 
+        .loading {
+            text-align: center;
+            color: #aaa;
+        }
+
         #content {
             display: none;
         }
@@ -110,7 +116,7 @@
 
     <div class="card">
 
-        <div id="loading">
+        <div id="loading" class="loading">
             Loading VPN...
         </div>
 
@@ -120,18 +126,36 @@
 
             <h1 id="name"></h1>
 
-            <div class="status">
+            <div class="status" id="status">
                 ● Active
             </div>
 
             <div class="info">
+                <div class="label">Used Traffic</div>
+                <div class="value" id="usedTraffic">
+                    Loading...
+                </div>
+            </div>
+
+            <div class="info">
                 <div class="label">Traffic Limit</div>
-                <div class="value" id="traffic"></div>
+                <div class="value" id="trafficLimit">
+                    Loading...
+                </div>
+            </div>
+
+            <div class="info">
+                <div class="label">Remaining Traffic</div>
+                <div class="value" id="remainingTraffic">
+                    Loading...
+                </div>
             </div>
 
             <div class="info">
                 <div class="label">Expiration</div>
-                <div class="value" id="expiration"></div>
+                <div class="value" id="expiration">
+                    Loading...
+                </div>
             </div>
 
             <div class="config" id="config"></div>
@@ -152,9 +176,8 @@ let vpnConfig = "";
 
 async function loadVPN() {
 
-    const params = new URLSearchParams(
-        window.location.search
-    );
+    const params =
+        new URLSearchParams(window.location.search);
 
     const id = params.get("id");
 
@@ -172,53 +195,107 @@ async function loadVPN() {
         const data = await response.json();
 
         if (!response.ok || !data.success) {
+
             throw new Error(
                 data.error || "VPN not found."
             );
+
         }
 
         const vpn = data.vpn;
 
         vpnConfig = vpn.config;
 
-        document.getElementById("name").textContent =
-            vpn.name;
+        /*
+         * VPN NAME
+         */
 
-        document.getElementById("traffic").textContent =
-            vpn.traffic_limit
-                ? `${vpn.traffic_limit} GB`
-                : "Unlimited";
+        document.getElementById("name")
+            .textContent = vpn.name || "VPN";
 
-        document.getElementById("expiration").textContent =
+
+        /*
+         * TRAFFIC
+         */
+
+        if (vpn.traffic) {
+
+            document.getElementById("usedTraffic")
+                .textContent =
+                vpn.traffic.used || "Unknown";
+
+            document.getElementById("trafficLimit")
+                .textContent =
+                vpn.traffic.limit || "Unknown";
+
+            document.getElementById("remainingTraffic")
+                .textContent =
+                vpn.traffic.remaining || "Unknown";
+
+        } else {
+
+            document.getElementById("usedTraffic")
+                .textContent = "Unknown";
+
+            document.getElementById("trafficLimit")
+                .textContent = "Unknown";
+
+            document.getElementById("remainingTraffic")
+                .textContent = "Unknown";
+        }
+
+
+        /*
+         * EXPIRATION
+         */
+
+        document.getElementById("expiration")
+            .textContent =
             vpn.expiration || "No expiration";
 
-        document.getElementById("config").textContent =
-            vpn.config;
 
-        document.getElementById("loading").style.display =
-            "none";
+        /*
+         * CONFIG
+         */
 
-        document.getElementById("content").style.display =
-            "block";
+        document.getElementById("config")
+            .textContent =
+            vpn.config || "No configuration available.";
+
+
+        /*
+         * SHOW PAGE
+         */
+
+        document.getElementById("loading")
+            .style.display = "none";
+
+        document.getElementById("content")
+            .style.display = "block";
+
 
     } catch (error) {
 
         showError(error.message);
 
     }
+
 }
+
 
 function showError(message) {
 
-    document.getElementById("loading").style.display =
-        "none";
+    document.getElementById("loading")
+        .style.display = "none";
 
-    document.getElementById("error").textContent =
-        message;
+    document.getElementById("error")
+        .textContent = message;
 
-    document.getElementById("error").style.display =
-        "block";
+    document.getElementById("error")
+        .style.display = "block";
+
 }
+
 
 async function copyConfig() {
 
@@ -230,14 +307,31 @@ async function copyConfig() {
 
         alert("VPN config copied!");
 
-    } catch {
+    } catch (error) {
 
-        alert("Could not copy config.");
+        alert("Could not copy VPN config.");
 
     }
+
 }
 
+
+/*
+ * LOAD THE VPN
+ */
+
 loadVPN();
+
+
+/*
+ * REFRESH TRAFFIC EVERY 30 SECONDS
+ */
+
+setInterval(() => {
+
+    loadVPN();
+
+}, 30000);
 
 </script>
 
